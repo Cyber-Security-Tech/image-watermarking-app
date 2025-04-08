@@ -1,7 +1,7 @@
 from tkinter import (
-    Tk, Frame, Canvas, Button, Entry, StringVar,
-    Scale, HORIZONTAL, colorchooser, Label, messagebox,
-    Scrollbar, VERTICAL, Y, BOTH, RIGHT, LEFT, NW, Toplevel, Listbox, END
+    Tk, Frame, Canvas, Button, Entry, StringVar, Scale, HORIZONTAL, colorchooser,
+    Label, messagebox, Scrollbar, VERTICAL, Y, BOTH, RIGHT, LEFT, NW, filedialog,
+    Toplevel, Listbox, END
 )
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 from file_manager import load_image, save_image
@@ -15,6 +15,7 @@ FONT_FILES = {
     "Comic Sans MS": "comic.ttf"
 }
 
+
 class WatermarkApp:
     def __init__(self, window):
         self.window = window
@@ -26,8 +27,12 @@ class WatermarkApp:
         self.tk_image = None
         self.selected_color = (255, 255, 255)
         self.drag_position = None
-        self.warning_shown = False
+        self.logo_position = None
+        self.logo_image = None
+        self.logo_drag_active = False
+        self.text_drag_active = False
         self.font_var = StringVar(value="Arial")
+        self.warning_shown = False
 
         outer_frame = Frame(window, bg="white")
         outer_frame.pack(fill=BOTH, expand=True)
@@ -63,53 +68,54 @@ class WatermarkApp:
         self.preview_canvas.bind("<B1-Motion>", self.do_drag)
         self.preview_canvas.bind("<ButtonRelease-1>", self.end_drag)
 
-        Label(root, text="💡 Drag watermark. Transparency preview. Reset available!", bg="white", fg="gray").pack()
-
-        self.upload_btn = Button(root, text="Upload Image", command=self.upload_image, width=25)
-        self.upload_btn.pack(pady=5)
+        Button(root, text="Upload Image", command=self.upload_image, width=25).pack(pady=5)
 
         self.watermark_entry = Entry(root, width=40)
         self.watermark_entry.insert(0, "Your Watermark")
         self.watermark_entry.pack(pady=5)
         self.watermark_entry.bind("<KeyRelease>", lambda e: self.apply_watermark())
 
-        font_size_frame = Frame(root, bg="white")
-        font_size_frame.pack(pady=5)
+        font_frame = Frame(root, bg="white")
+        font_frame.pack(pady=5)
 
-        Label(font_size_frame, text="Font:", bg="white").grid(row=0, column=0, padx=10, pady=(0, 5))
-        self.font_preview_btn = Button(font_size_frame, text="Choose Font", command=self.show_font_dropdown, width=15)
-        self.font_preview_btn.grid(row=1, column=0, padx=10)
+        Label(font_frame, text="Font:", bg="white").grid(row=0, column=0, padx=10)
+        Button(font_frame, text="Choose Font", command=self.show_font_dropdown, width=15).grid(row=1, column=0, padx=10)
 
-        Label(font_size_frame, text="Size:", bg="white").grid(row=0, column=1, padx=10, pady=(0, 5))
-        self.size_slider = Scale(font_size_frame, from_=10, to=80, orient=HORIZONTAL, length=150,
+        Label(font_frame, text="Size:", bg="white").grid(row=0, column=1, padx=10)
+        self.size_slider = Scale(font_frame, from_=10, to=80, orient=HORIZONTAL, length=150,
                                  command=lambda val: self.apply_watermark())
         self.size_slider.set(30)
         self.size_slider.grid(row=1, column=1, padx=10)
 
-        color_opacity_frame = Frame(root, bg="white")
-        color_opacity_frame.pack(pady=5)
+        color_frame = Frame(root, bg="white")
+        color_frame.pack(pady=5)
 
-        Label(color_opacity_frame, text="Color:", bg="white").grid(row=0, column=0, padx=10, pady=(0, 5))
-        self.color_btn = Button(color_opacity_frame, text="Pick Color", command=self.choose_color, width=15)
+        Label(color_frame, text="Color:", bg="white").grid(row=0, column=0, padx=10)
+        self.color_btn = Button(color_frame, text="Pick Color", command=self.choose_color, width=15)
         self.color_btn.grid(row=1, column=0, padx=10)
 
-        Label(color_opacity_frame, text="Opacity:", bg="white").grid(row=0, column=1, padx=10, pady=(0, 5))
-        self.opacity_slider = Scale(color_opacity_frame, from_=0, to=255, orient=HORIZONTAL, length=150,
+        Label(color_frame, text="Opacity:", bg="white").grid(row=0, column=1, padx=10)
+        self.opacity_slider = Scale(color_frame, from_=0, to=255, orient=HORIZONTAL, length=150,
                                     command=lambda val: self.apply_watermark())
         self.opacity_slider.set(128)
         self.opacity_slider.grid(row=1, column=1, padx=10)
 
+        logo_frame = Frame(root, bg="white")
+        logo_frame.pack(pady=10)
+
+        Button(logo_frame, text="Upload Logo", command=self.upload_logo, width=20).grid(row=0, column=0, padx=10)
+        Label(logo_frame, text="Logo Size (%):", bg="white").grid(row=0, column=1, padx=5)
+
+        self.logo_slider = Scale(logo_frame, from_=10, to=100, orient=HORIZONTAL, length=150,
+                                 command=lambda val: self.apply_watermark())
+        self.logo_slider.set(30)
+        self.logo_slider.grid(row=0, column=2, padx=5)
+
         button_frame = Frame(root, bg="white")
         button_frame.pack(pady=20)
 
-        self.add_btn = Button(button_frame, text="Add Watermark", width=15, command=self.apply_watermark)
-        self.add_btn.grid(row=0, column=0, padx=10)
-
-        self.save_btn = Button(button_frame, text="Save Image", width=15, command=self.save_image)
-        self.save_btn.grid(row=0, column=1, padx=10)
-
-        self.reset_btn = Button(button_frame, text="Reset", width=15, command=self.reset_fields)
-        self.reset_btn.grid(row=0, column=2, padx=10)
+        Button(button_frame, text="Add Watermark", width=18, command=self.apply_watermark).grid(row=0, column=0, padx=10)
+        Button(button_frame, text="Save Image", width=18, command=self.save_image).grid(row=0, column=1, padx=10)
 
     def show_font_dropdown(self):
         if hasattr(self, "font_picker_win") and self.font_picker_win.winfo_exists():
@@ -142,27 +148,16 @@ class WatermarkApp:
 
     def upload_image(self):
         self.original_image = load_image().convert("RGBA")
-        self.watermarked_image = None
         self.drag_position = None
-        if self.original_image:
+        self.logo_position = None
+        self.apply_watermark()
+
+    def upload_logo(self):
+        path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png *.jpg *.jpeg")])
+        if path:
+            self.logo_image = Image.open(path).convert("RGBA")
+            self.logo_position = (250, 250)
             self.apply_watermark()
-
-    def display_image(self, img):
-        self.preview_canvas.delete("all")
-        bg = self.generate_checkerboard((500, 500))
-        combined = Image.alpha_composite(bg.convert("RGBA"), img.resize((500, 500)).convert("RGBA"))
-        self.tk_image = ImageTk.PhotoImage(combined)
-        self.preview_canvas.create_image(0, 0, anchor=NW, image=self.tk_image)
-        self.preview_canvas.image = self.tk_image
-
-    def generate_checkerboard(self, size, tile=20):
-        bg = Image.new("RGB", size, "white")
-        draw = ImageDraw.Draw(bg)
-        for y in range(0, size[1], tile):
-            for x in range(0, size[0], tile):
-                fill = (220, 220, 220) if (x//tile + y//tile) % 2 == 0 else (255, 255, 255)
-                draw.rectangle([x, y, x + tile, y + tile], fill=fill)
-        return bg
 
     def choose_color(self):
         color = colorchooser.askcolor(title="Pick a Text Color")
@@ -171,80 +166,87 @@ class WatermarkApp:
             self.apply_watermark()
 
     def start_drag(self, event):
-        self.drag_position = (event.x, event.y)
-        self.warning_shown = False
-        self.apply_watermark()
+        if self.logo_image:
+            lx, ly = self.logo_position or (250, 250)
+            logo_width = int(self.logo_image.width * self.logo_slider.get() / 100)
+            logo_height = int(self.logo_image.height * self.logo_slider.get() / 100)
+            if lx - logo_width // 2 <= event.x <= lx + logo_width // 2 and ly - logo_height // 2 <= event.y <= ly + logo_height // 2:
+                self.logo_drag_active = True
+                return
+        self.text_drag_active = True
 
     def do_drag(self, event):
-        self.drag_position = (event.x, event.y)
+        if self.text_drag_active:
+            self.drag_position = (event.x, event.y)
+        elif self.logo_drag_active:
+            self.logo_position = (event.x, event.y)
         self.apply_watermark()
 
     def end_drag(self, event):
-        self.drag_position = (event.x, event.y)
-        self.apply_watermark()
+        self.text_drag_active = False
+        self.logo_drag_active = False
 
     def apply_watermark(self):
         if not self.original_image:
             return
 
-        text = self.watermark_entry.get()
-        if not text:
-            return
+        base = self.original_image.copy()
+        draw = ImageDraw.Draw(base)
 
+        # === Text ===
+        text = self.watermark_entry.get()
         font_name = self.font_var.get()
         font_size = self.size_slider.get()
         opacity = self.opacity_slider.get()
         color = self.selected_color
 
-        font_path = FONT_FILES.get(font_name, "arial.ttf")
-        try:
-            font = ImageFont.truetype(font_path, font_size)
-        except:
-            font = ImageFont.load_default()
+        if text:
+            font_path = FONT_FILES.get(font_name, "arial.ttf")
+            try:
+                font = ImageFont.truetype(font_path, font_size)
+            except:
+                font = ImageFont.load_default()
 
-        dummy_img = self.original_image.copy()
-        draw = ImageDraw.Draw(dummy_img)
-        bbox = draw.textbbox((0, 0), text, font=font)
-        text_width = bbox[2] - bbox[0]
-        text_height = bbox[3] - bbox[1]
+            bbox = draw.textbbox((0, 0), text, font=font)
+            w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
 
-        if self.drag_position:
-            x = self.drag_position[0] - text_width // 2
-            y = self.drag_position[1] - text_height // 2
-        else:
-            x = (self.original_image.width - text_width) // 2
-            y = (self.original_image.height - text_height) // 2
+            x, y = self.drag_position or ((base.width - w) // 2, (base.height - h) // 2)
+            if x < 0 or y < 0 or x + w > base.width or y + h > base.height:
+                if not self.warning_shown:
+                    self.warning_shown = True
+                    messagebox.showwarning("Watermark Cutoff", "Text watermark might be cut off.")
 
-        if x < 0 or y < 0 or x + text_width > self.original_image.width or y + text_height > self.original_image.height:
-            if not self.warning_shown:
-                self.warning_shown = True
-                messagebox.showwarning(
-                    "Watermark May Be Cut Off",
-                    "Your watermark text might be cut off. Try reducing the font size or using a larger image."
-                )
+            txt_overlay = Image.new("RGBA", base.size, (255, 255, 255, 0))
+            ImageDraw.Draw(txt_overlay).text((x, y), text, font=font, fill=color + (opacity,))
+            base = Image.alpha_composite(base, txt_overlay)
 
-        self.watermarked_image = add_watermark_to_image(
-            self.original_image.copy(), text, font_name, font_size, color, opacity, (x, y)
-        )
-        self.display_image(self.watermarked_image)
+        # === Logo ===
+        if self.logo_image:
+            scale = self.logo_slider.get() / 100
+            resized = self.logo_image.resize((int(self.logo_image.width * scale), int(self.logo_image.height * scale)))
+            lx, ly = self.logo_position or ((base.width - resized.width) // 2, (base.height - resized.height) // 2)
+            overlay = Image.new("RGBA", base.size, (255, 255, 255, 0))
+            overlay.paste(resized, (lx - resized.width // 2, ly - resized.height // 2), resized)
+            base = Image.alpha_composite(base, overlay)
+
+        self.watermarked_image = base
+        self.display_image(base)
+
+    def display_image(self, img):
+        self.preview_canvas.delete("all")
+        bg = Image.new("RGB", (500, 500), "white")
+        draw = ImageDraw.Draw(bg)
+        for y in range(0, 500, 20):
+            for x in range(0, 500, 20):
+                fill = (220, 220, 220) if (x//20 + y//20) % 2 == 0 else (255, 255, 255)
+                draw.rectangle([x, y, x + 20, y + 20], fill=fill)
+        composite = Image.alpha_composite(bg.convert("RGBA"), img.resize((500, 500)).convert("RGBA"))
+        self.tk_image = ImageTk.PhotoImage(composite)
+        self.preview_canvas.create_image(0, 0, anchor=NW, image=self.tk_image)
+        self.preview_canvas.image = self.tk_image
 
     def save_image(self):
         if not self.watermarked_image:
-            messagebox.showerror("No Watermark", "Please add a watermark before saving.")
+            messagebox.showerror("No Watermark", "Please add a watermark first.")
             return
         save_image(self.watermarked_image)
-
-    def reset_fields(self):
-        if not self.original_image:
-            return
-
-        self.watermark_entry.delete(0, "end")
-        self.watermark_entry.insert(0, "Your Watermark")
-        self.font_var.set("Arial")
-        self.size_slider.set(30)
-        self.opacity_slider.set(128)
-        self.selected_color = (255, 255, 255)
-        self.drag_position = None
-        self.warning_shown = False
-        self.watermarked_image = None
-        self.display_image(self.original_image)
