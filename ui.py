@@ -1,4 +1,7 @@
-from tkinter import Canvas, Button, Entry, filedialog, messagebox
+from tkinter import (
+    Canvas, Button, Entry, filedialog, messagebox,
+    StringVar, OptionMenu, Scale, HORIZONTAL
+)
 from PIL import ImageTk
 from file_manager import load_image, save_image
 from watermark import add_watermark_to_image
@@ -22,6 +25,17 @@ class WatermarkApp:
         self.watermark_entry.pack(pady=5)
         self.watermark_entry.insert(0, "Your Watermark")
 
+        # --- Font selector ---
+        self.font_var = StringVar(value="Arial")
+        font_options = ["Arial", "Courier", "Times New Roman", "Helvetica", "Comic Sans MS"]
+        self.font_menu = OptionMenu(window, self.font_var, *font_options)
+        self.font_menu.pack(pady=5)
+
+        # --- Font size slider ---
+        self.size_slider = Scale(window, from_=10, to=80, orient=HORIZONTAL, label="Font Size")
+        self.size_slider.set(30)
+        self.size_slider.pack(pady=5)
+
         self.add_btn = Button(text="Add Watermark", command=self.apply_watermark)
         self.add_btn.pack(pady=5)
 
@@ -35,6 +49,7 @@ class WatermarkApp:
             self.display_image(self.uploaded_image)
 
     def display_image(self, img):
+        self.canvas.delete("all")  # Clear previous image
         photo = ImageTk.PhotoImage(img)
         self.canvas.create_image(250, 250, image=photo)
         self.canvas.image = photo
@@ -49,7 +64,11 @@ class WatermarkApp:
             messagebox.showwarning("No Text", "Please enter watermark text.")
             return
 
-        self.watermarked_image = add_watermark_to_image(self.uploaded_image, text)
+        font_name = self.font_var.get()
+        font_size = self.size_slider.get()
+
+        # Always apply to original image, not already watermarked one
+        self.watermarked_image = add_watermark_to_image(self.uploaded_image, text, font_name, font_size)
         self.display_image(self.watermarked_image)
 
     def save_image(self):
