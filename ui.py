@@ -63,7 +63,7 @@ class WatermarkApp:
         self.preview_canvas.bind("<B1-Motion>", self.do_drag)
         self.preview_canvas.bind("<ButtonRelease-1>", self.end_drag)
 
-        Label(root, text="💡 Drag watermark. Real transparency preview. All updates live!", bg="white", fg="gray").pack()
+        Label(root, text="💡 Drag watermark. Transparency preview. Reset available!", bg="white", fg="gray").pack()
 
         self.upload_btn = Button(root, text="Upload Image", command=self.upload_image, width=25)
         self.upload_btn.pack(pady=5)
@@ -77,7 +77,6 @@ class WatermarkApp:
         font_size_frame.pack(pady=5)
 
         Label(font_size_frame, text="Font:", bg="white").grid(row=0, column=0, padx=10, pady=(0, 5))
-
         self.font_preview_btn = Button(font_size_frame, text="Choose Font", command=self.show_font_dropdown, width=15)
         self.font_preview_btn.grid(row=1, column=0, padx=10)
 
@@ -103,11 +102,14 @@ class WatermarkApp:
         button_frame = Frame(root, bg="white")
         button_frame.pack(pady=20)
 
-        self.add_btn = Button(button_frame, text="Add Watermark", width=20, command=self.apply_watermark)
-        self.add_btn.grid(row=0, column=0, padx=15)
+        self.add_btn = Button(button_frame, text="Add Watermark", width=15, command=self.apply_watermark)
+        self.add_btn.grid(row=0, column=0, padx=10)
 
-        self.save_btn = Button(button_frame, text="Save Image", width=20, command=self.save_image)
-        self.save_btn.grid(row=0, column=1, padx=15)
+        self.save_btn = Button(button_frame, text="Save Image", width=15, command=self.save_image)
+        self.save_btn.grid(row=0, column=1, padx=10)
+
+        self.reset_btn = Button(button_frame, text="Reset", width=15, command=self.reset_fields)
+        self.reset_btn.grid(row=0, column=2, padx=10)
 
     def show_font_dropdown(self):
         if hasattr(self, "font_picker_win") and self.font_picker_win.winfo_exists():
@@ -136,7 +138,6 @@ class WatermarkApp:
                 self.apply_watermark()
 
         listbox.bind("<<ListboxSelect>>", select_font)
-
         Button(self.font_picker_win, text="Close", command=self.font_picker_win.destroy).pack(pady=(0, 10))
 
     def upload_image(self):
@@ -148,7 +149,7 @@ class WatermarkApp:
 
     def display_image(self, img):
         self.preview_canvas.delete("all")
-        bg = self.generate_checkerboard(size=(500, 500))
+        bg = self.generate_checkerboard((500, 500))
         combined = Image.alpha_composite(bg.convert("RGBA"), img.resize((500, 500)).convert("RGBA"))
         self.tk_image = ImageTk.PhotoImage(combined)
         self.preview_canvas.create_image(0, 0, anchor=NW, image=self.tk_image)
@@ -232,3 +233,18 @@ class WatermarkApp:
             messagebox.showerror("No Watermark", "Please add a watermark before saving.")
             return
         save_image(self.watermarked_image)
+
+    def reset_fields(self):
+        if not self.original_image:
+            return
+
+        self.watermark_entry.delete(0, "end")
+        self.watermark_entry.insert(0, "Your Watermark")
+        self.font_var.set("Arial")
+        self.size_slider.set(30)
+        self.opacity_slider.set(128)
+        self.selected_color = (255, 255, 255)
+        self.drag_position = None
+        self.warning_shown = False
+        self.watermarked_image = None
+        self.display_image(self.original_image)
