@@ -20,7 +20,6 @@ class WatermarkApp:
         self.drag_position = None
         self.warning_shown = False
 
-        # === Scrollable Canvas Setup ===
         outer_frame = Frame(window, bg="white")
         outer_frame.pack(fill=BOTH, expand=True)
 
@@ -33,19 +32,16 @@ class WatermarkApp:
         self.canvas.configure(yscrollcommand=scrollbar.set)
         self.canvas.bind("<Configure>", self._resize_canvas)
 
-        # === Inner Frame (UI content) ===
         self.inner_frame = Frame(self.canvas, bg="white")
         self.canvas_window = self.canvas.create_window((0, 0), window=self.inner_frame, anchor=NW)
 
         self.inner_frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
         self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
 
-        # === Content ===
         self._build_ui(self.inner_frame)
 
     def _resize_canvas(self, event):
-        canvas_width = event.width
-        self.canvas.itemconfig(self.canvas_window, width=canvas_width)
+        self.canvas.itemconfig(self.canvas_window, width=event.width)
 
     def _on_mousewheel(self, event):
         self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
@@ -58,7 +54,7 @@ class WatermarkApp:
         self.preview_canvas.bind("<B1-Motion>", self.do_drag)
         self.preview_canvas.bind("<ButtonRelease-1>", self.end_drag)
 
-        Label(root, text="💡 Tip: After adding watermark, drag it on the image to reposition it.", bg="white", fg="gray").pack()
+        Label(root, text="💡 Tip: Drag the watermark to reposition. Changes auto-preview.", bg="white", fg="gray").pack()
 
         self.upload_btn = Button(root, text="Upload Image", command=self.upload_image, width=25)
         self.upload_btn.pack(pady=5)
@@ -66,6 +62,7 @@ class WatermarkApp:
         self.watermark_entry = Entry(root, width=40)
         self.watermark_entry.insert(0, "Your Watermark")
         self.watermark_entry.pack(pady=5)
+        self.watermark_entry.bind("<KeyRelease>", lambda e: self.apply_watermark())
 
         font_size_frame = Frame(root, bg="white")
         font_size_frame.pack(pady=5)
@@ -73,11 +70,12 @@ class WatermarkApp:
         Label(font_size_frame, text="Font:", bg="white").grid(row=0, column=0, padx=10, pady=(0, 5))
         self.font_var = StringVar(value="Arial")
         font_options = ["Arial", "Courier", "Times New Roman", "Helvetica", "Comic Sans MS"]
-        self.font_menu = OptionMenu(font_size_frame, self.font_var, *font_options)
+        self.font_menu = OptionMenu(font_size_frame, self.font_var, *font_options, command=lambda _: self.apply_watermark())
         self.font_menu.grid(row=1, column=0, padx=10)
 
         Label(font_size_frame, text="Size:", bg="white").grid(row=0, column=1, padx=10, pady=(0, 5))
-        self.size_slider = Scale(font_size_frame, from_=10, to=80, orient=HORIZONTAL, length=150)
+        self.size_slider = Scale(font_size_frame, from_=10, to=80, orient=HORIZONTAL, length=150,
+                                 command=lambda val: self.apply_watermark())
         self.size_slider.set(30)
         self.size_slider.grid(row=1, column=1, padx=10)
 
@@ -89,7 +87,8 @@ class WatermarkApp:
         self.color_btn.grid(row=1, column=0, padx=10)
 
         Label(color_opacity_frame, text="Opacity:", bg="white").grid(row=0, column=1, padx=10, pady=(0, 5))
-        self.opacity_slider = Scale(color_opacity_frame, from_=0, to=255, orient=HORIZONTAL, length=150)
+        self.opacity_slider = Scale(color_opacity_frame, from_=0, to=255, orient=HORIZONTAL, length=150,
+                                    command=lambda val: self.apply_watermark())
         self.opacity_slider.set(128)
         self.opacity_slider.grid(row=1, column=1, padx=10)
 
@@ -108,6 +107,7 @@ class WatermarkApp:
         self.drag_position = None
         if self.original_image:
             self.display_image(self.original_image)
+            self.apply_watermark()
 
     def display_image(self, img):
         self.preview_canvas.delete("all")
