@@ -3,7 +3,7 @@ from tkinter import (
     Scale, HORIZONTAL, colorchooser, Label, messagebox,
     Scrollbar, VERTICAL, Y, BOTH, RIGHT, LEFT, NW, Toplevel, Listbox, END
 )
-from PIL import ImageTk, ImageDraw, ImageFont
+from PIL import Image, ImageTk, ImageDraw, ImageFont
 from file_manager import load_image, save_image
 from watermark import add_watermark_to_image
 
@@ -56,14 +56,14 @@ class WatermarkApp:
         self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
     def _build_ui(self, root):
-        self.preview_canvas = Canvas(root, width=500, height=500, bg="lightgray")
+        self.preview_canvas = Canvas(root, width=500, height=500)
         self.preview_canvas.pack(pady=(20, 10))
 
         self.preview_canvas.bind("<Button-1>", self.start_drag)
         self.preview_canvas.bind("<B1-Motion>", self.do_drag)
         self.preview_canvas.bind("<ButtonRelease-1>", self.end_drag)
 
-        Label(root, text="💡 Drag watermark. Font previews in menu. All updates live!", bg="white", fg="gray").pack()
+        Label(root, text="💡 Drag watermark. Real transparency preview. All updates live!", bg="white", fg="gray").pack()
 
         self.upload_btn = Button(root, text="Upload Image", command=self.upload_image, width=25)
         self.upload_btn.pack(pady=5)
@@ -140,18 +140,28 @@ class WatermarkApp:
         Button(self.font_picker_win, text="Close", command=self.font_picker_win.destroy).pack(pady=(0, 10))
 
     def upload_image(self):
-        self.original_image = load_image()
+        self.original_image = load_image().convert("RGBA")
         self.watermarked_image = None
         self.drag_position = None
         if self.original_image:
-            self.display_image(self.original_image)
             self.apply_watermark()
 
     def display_image(self, img):
         self.preview_canvas.delete("all")
-        self.tk_image = ImageTk.PhotoImage(img)
-        self.preview_canvas.create_image(250, 250, image=self.tk_image)
+        bg = self.generate_checkerboard(size=(500, 500))
+        combined = Image.alpha_composite(bg.convert("RGBA"), img.resize((500, 500)).convert("RGBA"))
+        self.tk_image = ImageTk.PhotoImage(combined)
+        self.preview_canvas.create_image(0, 0, anchor=NW, image=self.tk_image)
         self.preview_canvas.image = self.tk_image
+
+    def generate_checkerboard(self, size, tile=20):
+        bg = Image.new("RGB", size, "white")
+        draw = ImageDraw.Draw(bg)
+        for y in range(0, size[1], tile):
+            for x in range(0, size[0], tile):
+                fill = (220, 220, 220) if (x//tile + y//tile) % 2 == 0 else (255, 255, 255)
+                draw.rectangle([x, y, x + tile, y + tile], fill=fill)
+        return bg
 
     def choose_color(self):
         color = colorchooser.askcolor(title="Pick a Text Color")
@@ -213,7 +223,7 @@ class WatermarkApp:
                 )
 
         self.watermarked_image = add_watermark_to_image(
-            self.original_image, text, font_name, font_size, color, opacity, (x, y)
+            self.original_image.copy(), text, font_name, font_size, color, opacity, (x, y)
         )
         self.display_image(self.watermarked_image)
 
