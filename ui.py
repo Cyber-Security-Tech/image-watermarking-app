@@ -15,7 +15,10 @@ class WatermarkApp:
 
         self.original_image = None
         self.watermarked_image = None
+        self.tk_image = None
         self.selected_color = (255, 255, 255)
+        self.drag_position = None
+        self.warning_shown = False
 
         # === Scrollable Canvas Setup ===
         outer_frame = Frame(window, bg="white")
@@ -50,6 +53,12 @@ class WatermarkApp:
     def _build_ui(self, root):
         self.preview_canvas = Canvas(root, width=500, height=500, bg="lightgray")
         self.preview_canvas.pack(pady=(20, 10))
+
+        self.preview_canvas.bind("<Button-1>", self.start_drag)
+        self.preview_canvas.bind("<B1-Motion>", self.do_drag)
+        self.preview_canvas.bind("<ButtonRelease-1>", self.end_drag)
+
+        Label(root, text="💡 Tip: After adding watermark, drag it on the image to reposition it.", bg="white", fg="gray").pack()
 
         self.upload_btn = Button(root, text="Upload Image", command=self.upload_image, width=25)
         self.upload_btn.pack(pady=5)
@@ -96,36 +105,47 @@ class WatermarkApp:
     def upload_image(self):
         self.original_image = load_image()
         self.watermarked_image = None
+        self.drag_position = None
         if self.original_image:
             self.display_image(self.original_image)
 
     def display_image(self, img):
         self.preview_canvas.delete("all")
-        photo = ImageTk.PhotoImage(img)
-        self.preview_canvas.create_image(250, 250, image=photo)
-        self.preview_canvas.image = photo
+        self.tk_image = ImageTk.PhotoImage(img)
+        self.preview_canvas.create_image(250, 250, image=self.tk_image)
+        self.preview_canvas.image = self.tk_image
 
     def choose_color(self):
         color = colorchooser.askcolor(title="Pick a Text Color")
         if color[0]:
             self.selected_color = tuple(int(x) for x in color[0])
+            self.apply_watermark()
+
+    def start_drag(self, event):
+        self.drag_position = (event.x, event.y)
+        self.warning_shown = False
+        self.apply_watermark()
+
+    def do_drag(self, event):
+        self.drag_position = (event.x, event.y)
+        self.apply_watermark()
+
+    def end_drag(self, event):
+        self.drag_position = (event.x, event.y)
+        self.apply_watermark()
 
     def apply_watermark(self):
         if not self.original_image:
-            messagebox.showerror("No Image", "Please upload an image first.")
             return
 
         text = self.watermark_entry.get()
         if not text:
-            messagebox.showwarning("No Text", "Please enter watermark text.")
             return
 
         font_name = self.font_var.get()
         font_size = self.size_slider.get()
         opacity = self.opacity_slider.get()
         color = self.selected_color
-
-        from PIL import Image, ImageDraw, ImageFont
 
         FONT_FILES = {
             "Arial": "arial.ttf",
@@ -136,37 +156,36 @@ class WatermarkApp:
         }
 
         font_path = FONT_FILES.get(font_name, "arial.ttf")
-
         try:
             font = ImageFont.truetype(font_path, font_size)
         except:
             font = ImageFont.load_default()
 
-        # Create dummy image to calculate actual watermark box
         dummy_img = self.original_image.copy()
         draw = ImageDraw.Draw(dummy_img)
         bbox = draw.textbbox((0, 0), text, font=font)
-
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
 
-        # Calculate centered position (same logic used in your add_watermark_to_image)
-        x = (self.original_image.width - text_width) // 2
-        y = (self.original_image.height - text_height) // 2
+        if self.drag_position:
+            x = self.drag_position[0] - text_width // 2
+            y = self.drag_position[1] - text_height // 2
+        else:
+            x = (self.original_image.width - text_width) // 2
+            y = (self.original_image.height - text_height) // 2
 
-        # Check if watermark would go off the image
         if x < 0 or y < 0 or x + text_width > self.original_image.width or y + text_height > self.original_image.height:
-            messagebox.showwarning(
-                "Watermark May Be Cut Off",
-                "Your watermark text might be cut off. Try reducing the font size or using a larger image."
-            )
+            if not self.warning_shown:
+                self.warning_shown = True
+                messagebox.showwarning(
+                    "Watermark May Be Cut Off",
+                    "Your watermark text might be cut off. Try reducing the font size or using a larger image."
+                )
 
         self.watermarked_image = add_watermark_to_image(
-            self.original_image, text, font_name, font_size, color, opacity
+            self.original_image, text, font_name, font_size, color, opacity, (x, y)
         )
         self.display_image(self.watermarked_image)
-
-
 
     def save_image(self):
         if not self.watermarked_image:
