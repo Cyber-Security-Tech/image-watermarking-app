@@ -1,11 +1,19 @@
 from tkinter import (
-    Tk, Frame, Canvas, Button, Entry, StringVar, OptionMenu,
-    Scale, HORIZONTAL, colorchooser, Label, messagebox, Scrollbar, VERTICAL, Y, BOTH, RIGHT, LEFT, NW
+    Tk, Frame, Canvas, Button, Entry, StringVar,
+    Scale, HORIZONTAL, colorchooser, Label, messagebox,
+    Scrollbar, VERTICAL, Y, BOTH, RIGHT, LEFT, NW, Toplevel, Listbox, END
 )
 from PIL import ImageTk, ImageDraw, ImageFont
 from file_manager import load_image, save_image
 from watermark import add_watermark_to_image
 
+FONT_FILES = {
+    "Arial": "arial.ttf",
+    "Courier": "cour.ttf",
+    "Times New Roman": "times.ttf",
+    "Helvetica": "arial.ttf",
+    "Comic Sans MS": "comic.ttf"
+}
 
 class WatermarkApp:
     def __init__(self, window):
@@ -19,6 +27,7 @@ class WatermarkApp:
         self.selected_color = (255, 255, 255)
         self.drag_position = None
         self.warning_shown = False
+        self.font_var = StringVar(value="Arial")
 
         outer_frame = Frame(window, bg="white")
         outer_frame.pack(fill=BOTH, expand=True)
@@ -54,7 +63,7 @@ class WatermarkApp:
         self.preview_canvas.bind("<B1-Motion>", self.do_drag)
         self.preview_canvas.bind("<ButtonRelease-1>", self.end_drag)
 
-        Label(root, text="💡 Tip: Drag the watermark to reposition. Changes auto-preview.", bg="white", fg="gray").pack()
+        Label(root, text="💡 Drag watermark. Font previews in menu. All updates live!", bg="white", fg="gray").pack()
 
         self.upload_btn = Button(root, text="Upload Image", command=self.upload_image, width=25)
         self.upload_btn.pack(pady=5)
@@ -68,10 +77,9 @@ class WatermarkApp:
         font_size_frame.pack(pady=5)
 
         Label(font_size_frame, text="Font:", bg="white").grid(row=0, column=0, padx=10, pady=(0, 5))
-        self.font_var = StringVar(value="Arial")
-        font_options = ["Arial", "Courier", "Times New Roman", "Helvetica", "Comic Sans MS"]
-        self.font_menu = OptionMenu(font_size_frame, self.font_var, *font_options, command=lambda _: self.apply_watermark())
-        self.font_menu.grid(row=1, column=0, padx=10)
+
+        self.font_preview_btn = Button(font_size_frame, text="Choose Font", command=self.show_font_dropdown, width=15)
+        self.font_preview_btn.grid(row=1, column=0, padx=10)
 
         Label(font_size_frame, text="Size:", bg="white").grid(row=0, column=1, padx=10, pady=(0, 5))
         self.size_slider = Scale(font_size_frame, from_=10, to=80, orient=HORIZONTAL, length=150,
@@ -100,6 +108,36 @@ class WatermarkApp:
 
         self.save_btn = Button(button_frame, text="Save Image", width=20, command=self.save_image)
         self.save_btn.grid(row=0, column=1, padx=15)
+
+    def show_font_dropdown(self):
+        if hasattr(self, "font_picker_win") and self.font_picker_win.winfo_exists():
+            return
+
+        self.font_picker_win = Toplevel(self.window)
+        self.font_picker_win.title("Choose Font")
+        self.font_picker_win.configure(bg="white")
+
+        listbox = Listbox(self.font_picker_win, height=8, width=30)
+        listbox.pack(padx=10, pady=10)
+
+        self.font_list = list(FONT_FILES.keys())
+        for i, font_name in enumerate(self.font_list):
+            listbox.insert(END, font_name)
+            try:
+                listbox.itemconfig(i, {'font': (font_name, 14)})
+            except:
+                pass
+
+        def select_font(event):
+            idx = listbox.curselection()
+            if idx:
+                selected = self.font_list[idx[0]]
+                self.font_var.set(selected)
+                self.apply_watermark()
+
+        listbox.bind("<<ListboxSelect>>", select_font)
+
+        Button(self.font_picker_win, text="Close", command=self.font_picker_win.destroy).pack(pady=(0, 10))
 
     def upload_image(self):
         self.original_image = load_image()
@@ -146,14 +184,6 @@ class WatermarkApp:
         font_size = self.size_slider.get()
         opacity = self.opacity_slider.get()
         color = self.selected_color
-
-        FONT_FILES = {
-            "Arial": "arial.ttf",
-            "Courier": "cour.ttf",
-            "Times New Roman": "times.ttf",
-            "Helvetica": "arial.ttf",
-            "Comic Sans MS": "comic.ttf"
-        }
 
         font_path = FONT_FILES.get(font_name, "arial.ttf")
         try:
