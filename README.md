@@ -2,6 +2,14 @@
 
 A full-featured desktop application built with Python and Tkinter that allows users to add text or logo watermarks to images with powerful customization options.
 
+---
+
+## 🎥 Demo
+
+![Demo Walkthrough](media/demo/demo.gif)
+
+---
+
 ## 🚀 Features
 
 - ✅ Upload any image and add a custom watermark
@@ -19,21 +27,35 @@ A full-featured desktop application built with Python and Tkinter that allows us
 - ✅ Transparent checkerboard background preview
 - ✅ Scrollable responsive UI for smaller windows
 
-## 🛠️ Technologies Used
+---
+
+## 🖼️ Screenshots
+
+| Initial View | Text Watermark | Logo Watermark | Undo/Redo |
+|--------------|----------------|----------------|-----------|
+| ![](media/screenshots/initial_view.png) | ![](media/screenshots/text_watermark.png) | ![](media/screenshots/logo_watermark.png) | ![](media/screenshots/undo_redo.png) |
+
+---
+
+## 🛠️ Tech Stack
 
 - **Python 3**
-- **Tkinter** (for GUI)
-- **Pillow (PIL)** (for image manipulation)
+- **Tkinter** (GUI)
+- **Pillow (PIL)** – Image processing
+
+---
 
 ## 📚 What I Learned
 
 This project helped solidify several key programming skills:
-- 🧠 **Object-Oriented Design**: Structuring the app around a single `WatermarkApp` class with clearly scoped methods
-- 🎨 **GUI Development**: Building scrollable, dynamic interfaces in Tkinter
-- 🖼️ **Image Manipulation**: Using Pillow for watermarking, layering, transparency, and image resizing
-- 🕹️ **Interactive UI Logic**: Implementing real-time drag-and-drop movement for both text and logos
-- 🔁 **State Management**: Building a complete undo/redo system using stacks and deep copies of state
-- 🧪 **Debugging & Testing**: Tracing tricky UI bugs and ensuring that all layout and rendering issues were fixed
+- 🧠 **Object-Oriented Design**: Using a `WatermarkApp` class to handle state and logic
+- 🎨 **GUI Development**: Scrollable, dynamic interfaces in Tkinter
+- 🖼️ **Image Manipulation**: Transparent overlays, layering, resizing, and blending
+- 🕹️ **Drag-and-Drop**: Interactive repositioning of both text and logos
+- 🔁 **Undo/Redo**: Implementing state history with deep copies
+- ⚠️ **UX Warnings**: Dynamic validation and visual safeguards
+
+---
 
 ## 💾 How to Run
 
@@ -52,13 +74,46 @@ pip install pillow
 python main.py
 ```
 
+---
+
 ## 📂 File Structure
 
-- `main.py` / `ui.py` — Main app logic
+```
+image-watermarking-app/
+├── main.py
+├── ui.py
+├── file_manager.py
+├── watermark.py
+├── assets/
+│   └── checkerboard_bg.png
+├── media/
+│   ├── demo/
+│   │   └── demo.gif
+│   └── screenshots/
+│       ├── initial_view.png
+│       ├── text_watermark.png
+│       ├── logo_watermark.png
+│       └── undo_redo.png
+└── README.md
+```
+
+
+- `main.py` / `ui.py` — App entry and GUI logic
 - `file_manager.py` — Load/save helper functions
-- `watermark.py` — Core watermark application logic
+- `watermark.py` — Watermark rendering logic
+- `media/screenshots/` — App screenshots
+- `media/demo/` — Demo GIF
 - `README.md` — This file
 
 ---
 
-This project demonstrates practical GUI programming and real-world problem-solving with image processing.
+## 🔮 Future Ideas
+
+- Add watermark **presets**
+- Option to **batch watermark** multiple images
+- Save/export watermark styles
+- Real-time **zoom** and pan controls
+
+---
+
+This project demonstrates real-world GUI programming and image processing with Python.
